@@ -31,3 +31,15 @@ lcov.info
 
 # OS
 .DS_Store
+
+# Local agent & metadata directories
+.agents/
+.codex/
+.impeccable/
+.opencode/
+.github/hooks/
+.github/skills/
+
+# Temp/draft markdown files
+social_post.md
+demo_script.md

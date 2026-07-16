@@ -1,72 +1,179 @@
-# ProofWork
+<div align="center">
 
-A tamper-evident, timestamped attestation log for AI coding agent actions.
+# 📜 ProofWork
 
-## Problem
+**A tamper-evident, timestamped attestation log for AI coding agent actions.**
 
-AI coding agents write code, run tests, and deploy contracts unattended. When a deployment fails or a bug appears, you need to know exactly what the agent did and when. Standard git commits do not guarantee the timeline, and terminal logs are easily lost. There is no reliable way to prove that a specific agent took a specific action at an exact time.
+Log, sign, and verify commits, test results, and deployments onchain to maintain an immutable timeline of autonomous activity.
 
-## Solution
+[![Solidity](https://img.shields.io/badge/solidity-0.8.28-black?style=for-the-badge&logo=solidity)](https://soliditylang.org/)
+[![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macOS-lightgrey?style=for-the-badge)](#)
+[![Network](https://img.shields.io/badge/network-Monad%20Testnet-purple?style=for-the-badge)](https://testnet.monadexplorer.com/)
 
-ProofWork logs agent actions onchain. Agents register their identity and submit hashes of their actions—like commits, test results, or deployments—to a smart contract. The contract stores the hash and a timestamp. 
+</div>
 
-Because the logs are onchain, they are permanent. If an agent claims it ran tests at 3 AM and the hash is on the contract, you know it happened.
+---
+
+## What is ProofWork?
+
+ProofWork is an onchain logging and attestation system designed for autonomous AI coding agents. When agents run tests, commit code, or deploy smart contracts, they submit cryptographic hashes of their actions to the ProofWork contract on the Monad testnet. 
+
+Because the records are stored on the blockchain, they are permanent and tamper evident. Observers can audit the exact sequence and timing of an agent's work, ensuring that actions cannot be backdated, modified, or deleted.
+
+### Key capabilities
+
+| Feature | Description |
+|---|---|
+| **Onchain logs** | Action hashes are written directly to Monad Testnet, providing a permanent, cryptographically verified timeline |
+| **Gas optimized** | Solidity event logs store data rather than state variables, keeping transaction costs low |
+| **CLI integration** | Node.js CLI tool with an automatic Git hook for hands off logging of code changes |
+| **Interactive dashboard** | Next.js interface reads events directly from the blockchain to show agent activity |
+| **Secure keystores** | Password entry is interactive, preventing raw private keys from being stored in environment variables |
+
+---
+
+## Installation
+
+### Prerequisites
+
+Make sure you have Node.js and Foundry installed.
+
+### CLI setup
+
+Clone the repository and install dependencies for the CLI:
+
+```bash
+git clone https://github.com/musprodev/proofwork.git
+cd proofwork
+npm install --prefix cli
+```
+
+To make the `proofwork` command available globally, link the CLI package:
+
+```bash
+cd cli
+npm link
+cd ..
+```
+
+### Dashboard setup
+
+Install dependencies for the Next.js web interface:
+
+```bash
+npm install --prefix web
+```
+
+---
+
+## Quick start
+
+### 1. Register an agent
+
+Register a new agent by choosing an identifier. The CLI will look for a Foundry keystore of the operator and prompt for its password:
+
+```bash
+proofwork register --agent-id my-build-agent --account proofwork-deployer
+```
+
+### 2. Log actions
+
+You can log any action manually using the `log` command:
+
+```bash
+proofwork log --agent-id my-build-agent --action commit --data "feat: add user auth" --account proofwork-deployer
+```
+
+Or use the automated Git hook to log commits automatically on every commit.
+
+### 3. Run the dashboard
+
+Start the Next.js development server:
+
+```bash
+npm run dev --prefix web
+```
+
+Open `http://localhost:3000` to view the timeline of attestations.
+
+---
 
 ## Architecture
 
-ProofWork consists of three parts:
-
-1. **Smart contract (`src/ProofWork.sol`)**: A Solidity contract deployed on Monad Testnet. It handles agent registration and stores action hashes using events to save gas.
-2. **CLI (`cli/`)**: A Node.js command-line tool using `viem` to interact with the contract. Agents use this to register their IDs and log actions. It includes a git hook (`post-commit`) to automatically log commits.
-3. **Dashboard (`web/`)**: A Next.js web interface that reads events directly from the contract. It shows a timeline of all agent actions and lets you export the logs.
-
-## Setup
-
-You need Node.js and Foundry installed.
-
-1. Install the dependencies for both the CLI and the web dashboard:
-   ```bash
-   npm install --prefix cli
-   npm install --prefix web
-   ```
-
-2. The CLI requires a keystore or a private key to sign transactions. You can use Foundry's keystore:
-   ```bash
-   # In a project using the CLI
-   proofwork register --agent-id my-agent-name
-   ```
-   The CLI prompts for your password interactively. It never reads private keys from environment variables.
-
-3. To run the dashboard locally:
-   ```bash
-   npm run dev --prefix web
-   ```
-   Open `http://localhost:3000` to see the live attestation timeline.
-
-## Best Practices
-
-- **Agent Identity Mapping**: The frontend displays agents by their `agentId` (a `bytes32` hash). To display human-readable names on the dashboard, add the mapping to `web/src/data/agents.json`:
-  ```json
-  {
-    "0xYourAgentIdHash...": "My Cool Agent"
-  }
-  ```
-- **Preventing Front-running**: When generating an `agentId` for the live network, it is recommended to salt the name with your deployer address (e.g., `keccak256(abi.encodePacked(myAddress, "my-agent"))`) rather than just the plain name. This prevents an observer from front-running your registration with the same name.
-
-## Contract
-
-ProofWork is live on Monad Testnet. 
-
-- **Address**: `0x41bdE1a2bbdF8859E82E163bb4b38E57f22C2ae0`
-- **Explorer**: [View on Monad Explorer](https://testnet.monadexplorer.com/address/0x41bdE1a2bbdF8859E82E163bb4b38E57f22C2ae0)
-
-## Demo
-
-Agents automatically log their commits using the provided git hook. To see the workflow in action, register an agent and commit a change:
-
-```bash
-proofwork register --agent-id my-build-agent
-git commit -m "fix: update dependency"
+```
+proofwork/
+├── src/
+│   └── ProofWork.sol      # Solidity smart contract handling agent registries and event logs
+├── cli/
+│   ├── index.js           # CLI entry point for signing and sending transactions via viem
+│   └── hooks/
+│       └── post-commit    # Git post commit hook for automated commit logging
+├── web/
+│   ├── src/
+│   │   ├── app/           # Next.js app pages and layouts
+│   │   └── data/          # Local datasets like human readable agent mappings
+│   └── package.json       # Dependencies for Next.js web application
+├── test/
+│   ├── ProofWork.t.sol    # Unit and fuzz tests for the Solidity contract
+│   └── ProofWorkInvariant.t.sol # Invariant properties and test handler
+├── foundry.toml           # Forge configuration for compilation and testing
+└── deployment.json        # Contract address, chain ID, and RPC configuration
 ```
 
-The CLI logs the commit hash to the contract. The web dashboard updates immediately to show the new attestation in the timeline.
+---
+
+## Technical and security details
+
+### How the Git hook works
+
+The post commit hook runs after every successful Git commit. It retrieves the latest commit hash, signs a message containing the hash, and triggers the `proofwork log` command. The command submits the hash to the `attest` function on the smart contract.
+
+To install the hook in your local Git repository:
+
+```bash
+cp cli/hooks/post-commit .git/hooks/
+chmod +x .git/hooks/post-commit
+```
+
+### Keystore and signature security
+
+The CLI avoids reading raw private keys from environment variables. Instead, it relies on Foundry encrypted keystores stored at `~/.foundry/keystores/`. 
+
+When executing a transaction, the CLI:
+1. Locates the keystore file by name.
+2. Prompts you for the password interactively in the terminal.
+3. Decrypts the private key in memory to sign transactions, minimizing exposure.
+
+### Front-running prevention
+
+To prevent an attacker from front running your agent registration, do not register a plain text name directly on a public network. Instead, salt the agent identifier with your deployer address:
+
+```solidity
+bytes32 agentId = keccak256(abi.encodePacked(msg.sender, "my-agent-name"));
+```
+
+This ensures only your controller address can register and claim ownership of that specific agent ID.
+
+---
+
+## Contract details
+
+The smart contract is deployed on the Monad testnet.
+
+- **Address**: `0x41bdE1a2bbdF8859E82E163bb4b38E57f22C2ae0`
+- **Explorer link**: [View on Monad Explorer](https://testnet.monadexplorer.com/address/0x41bdE1a2bbdF8859E82E163bb4b38E57f22C2ae0)
+
+---
+
+## Contributing
+
+Contributions are welcome. Run the test suite before submitting pull requests:
+
+```bash
+forge test
+```
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
