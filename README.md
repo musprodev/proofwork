@@ -43,6 +43,16 @@ You need Node.js and Foundry installed.
    ```
    Open `http://localhost:3000` to see the live attestation timeline.
 
+## Best Practices
+
+- **Agent Identity Mapping**: The frontend displays agents by their `agentId` (a `bytes32` hash). To display human-readable names on the dashboard, add the mapping to `web/src/data/agents.json`:
+  ```json
+  {
+    "0xYourAgentIdHash...": "My Cool Agent"
+  }
+  ```
+- **Preventing Front-running**: When generating an `agentId` for the live network, it is recommended to salt the name with your deployer address (e.g., `keccak256(abi.encodePacked(myAddress, "my-agent"))`) rather than just the plain name. This prevents an observer from front-running your registration with the same name.
+
 ## Contract
 
 ProofWork is live on Monad Testnet. 
