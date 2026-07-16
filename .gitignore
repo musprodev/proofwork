@@ -13,3 +13,21 @@ docs/
 # Dotenv file
 .env
 node_modules/
+
+# Next.js
+web/.next/
+web/out/
+web/build/
+.turbo/
+npm-debug.log*
+
+# Node
+*.tsbuildinfo
+
+# Foundry coverage
+coverage/
+coverage.json
+lcov.info
+
+# OS
+.DS_Store

@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { createPublicClient, http, parseAbiItem } from 'viem';
 import { defineChain } from 'viem';
 import { Button } from '@/components/ui/button';
-import { Download, GitCommit, Play, Rocket, AlertCircle } from 'lucide-react';
+import { Download, GitCommit, Play, Rocket, AlertCircle, Menu, X } from 'lucide-react';
+import agentsData from '@/data/agents.json';
 
 const monadTestnet = defineChain({
   id: 10143,
@@ -27,6 +28,7 @@ const publicClient = createPublicClient({
 
 const agentRegisteredEvent = parseAbiItem('event AgentRegistered(bytes32 indexed agentId, address indexed controller)');
 const attestedEvent = parseAbiItem('event Attested(bytes32 indexed agentId, bytes32 indexed actionHash, string actionType, uint256 sequenceNumber, uint256 timestamp)');
+const getControllerAbi = parseAbiItem('function getController(bytes32 agentId) external view returns (address)');
 
 type Agent = string;
 
@@ -36,6 +38,7 @@ interface Attestation {
   agentId: string;
   actionHash: string;
   actionType: string;
+  sequenceNumber: number;
   timestamp?: number;
 }
 
@@ -71,6 +74,7 @@ async function fetchLogsInChunks(args: any) {
 export default function Dashboard() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [controller, setController] = useState<string | null>(null);
   const [attestations, setAttestations] = useState<Attestation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,16 +106,24 @@ export default function Dashboard() {
   useEffect(() => {
     if (!selectedAgent) return;
     
-    async function fetchAttestations() {
+    async function fetchData() {
       setLoading(true);
       try {
-        const logs = await fetchLogsInChunks({
-          address: CONTRACT_ADDRESS,
-          event: attestedEvent,
-          args: {
-            agentId: selectedAgent
-          }
-        });
+        const [logs, ctrl] = await Promise.all([
+          fetchLogsInChunks({
+            address: CONTRACT_ADDRESS,
+            event: attestedEvent,
+            args: { agentId: selectedAgent as `0x${string}` }
+          }),
+          publicClient.readContract({
+            address: CONTRACT_ADDRESS,
+            abi: [getControllerAbi],
+            functionName: 'getController',
+            args: [selectedAgent as `0x${string}`],
+          })
+        ]);
+        
+        setController(ctrl as string);
         
         const attestationsData: Attestation[] = logs.map((log: any) => {
           return {
@@ -120,6 +132,7 @@ export default function Dashboard() {
             agentId: log.args.agentId,
             actionHash: log.args.actionHash,
             actionType: log.args.actionType,
+            sequenceNumber: Number(log.args.sequenceNumber),
             timestamp: Number(log.args.timestamp) * 1000,
           };
         });
@@ -133,7 +146,7 @@ export default function Dashboard() {
       }
     }
     
-    fetchAttestations();
+    fetchData();
   }, [selectedAgent]);
 
   const handleExport = () => {
@@ -162,47 +175,58 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen bg-[#0a0a0a] text-zinc-300 font-sans overflow-hidden">
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/80 z-30 md:hidden backdrop-blur-sm" 
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Mobile Sidebar Toggle */}
       <div className="md:hidden absolute top-4 left-4 z-50">
         <button 
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-400"
+          className="p-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-400 hover:text-zinc-200"
         >
-          {sidebarOpen ? 'Close' : 'Menu'}
+          {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
       </div>
 
       {/* Left Rail */}
       <div className={`
+        fixed inset-y-0 left-0 z-40 transform 
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-        md:translate-x-0
-        absolute md:relative z-40 transition-transform duration-200 ease-out
-        w-80 h-full border-r border-zinc-800 flex flex-col bg-[#0a0a0a]
+        md:relative md:translate-x-0 transition-transform duration-300 ease-in-out
+        w-80 border-r border-zinc-800 flex flex-col bg-[#0a0a0a] shadow-2xl md:shadow-none
       `}>
-        <div className="p-6 border-b border-zinc-800 md:pl-6 pl-20">
+        <div className="p-6 border-b border-zinc-800 pl-20 md:pl-6">
           <h1 className="text-sm font-semibold tracking-wide text-zinc-200">ProofWork</h1>
           <p className="text-xs text-zinc-500 font-mono mt-1">TESTNET_10143</p>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-1">
           <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 mb-4 px-2">Agents</h2>
           {agents.length === 0 && !error && <div className="px-2 text-sm text-zinc-600 font-mono">No agents found.</div>}
-          {agents.map((agent) => (
-            <button
-              key={agent}
-              onClick={() => {
-                setSelectedAgent(agent);
-                setSidebarOpen(false);
-              }}
-              className={`w-full text-left px-3 py-2 text-xs font-mono truncate transition-none rounded-sm ${
-                selectedAgent === agent 
-                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-700' 
-                  : 'text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300 border border-transparent'
-              }`}
-              title={agent}
-            >
-              {truncate(agent)}
-            </button>
-          ))}
+          {agents.map((agent) => {
+            const label = (agentsData as Record<string, string>)[agent] || truncate(agent);
+            return (
+              <button
+                key={agent}
+                onClick={() => {
+                  setSelectedAgent(agent);
+                  setSidebarOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 text-xs font-mono truncate transition-none rounded-sm ${
+                  selectedAgent === agent 
+                    ? 'bg-zinc-800 text-zinc-100 border border-zinc-700' 
+                    : 'text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300 border border-transparent'
+                }`}
+                title={agent}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -213,7 +237,16 @@ export default function Dashboard() {
           <div className="md:ml-0 ml-16 truncate">
             <h2 className="text-sm font-medium text-zinc-200">Attestation Timeline</h2>
             <div className="text-xs text-zinc-500 font-mono mt-1 truncate max-w-sm md:max-w-xl">
-              {selectedAgent || 'Select an agent to view logs'}
+              {selectedAgent ? (
+                <>
+                  <span className="text-zinc-400">Agent:</span> {(agentsData as Record<string, string>)[selectedAgent] || selectedAgent} 
+                  {controller && (
+                    <span className="ml-4">
+                      <span className="text-zinc-600">Controller:</span> {controller}
+                    </span>
+                  )}
+                </>
+              ) : 'Select an agent to view logs'}
             </div>
           </div>
           <Button 
@@ -264,6 +297,9 @@ export default function Dashboard() {
                       </div>
                       
                       <div className="grid grid-cols-[80px_1fr] sm:grid-cols-[100px_1fr] gap-x-2 gap-y-3 text-xs md:text-sm">
+                        <span className="text-zinc-600 uppercase tracking-widest text-[10px] font-bold mt-0.5">Seq No</span>
+                        <span className="font-mono text-zinc-200">#{att.sequenceNumber}</span>
+
                         <span className="text-zinc-600 uppercase tracking-widest text-[10px] font-bold mt-0.5">Data Hash</span>
                         <span className="font-mono text-zinc-200 break-all bg-zinc-900/50 p-1.5 rounded-sm border border-zinc-800/50">{att.actionHash}</span>
                         

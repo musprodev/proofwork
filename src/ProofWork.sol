@@ -38,17 +38,28 @@ contract ProofWork {
         _;
     }
 
+    // Audit Finding 1: Front-running registerAgent
+    // Justification: agentId should be salted by the operator (e.g. hash of address + name).
+    // An attacker front-running an unsalted agentId gains no financial upside.
     function registerAgent(bytes32 agentId) external {
         if (s_agents[agentId].registered) revert AlreadyRegistered();
         s_agents[agentId] = Agent({controller: msg.sender, pendingController: address(0), registered: true});
         emit AgentRegistered(agentId, msg.sender);
     }
 
+    // Audit Finding 2: No 'registered' check in attest path
+    // Justification: Unregistered agents have address(0) as controller, so onlyController
+    // naturally reverts. Reverting with NotController() saves ~200 gas on the hot path.
     function attest(bytes32 agentId, bytes32 actionHash, string calldata actionType) external onlyController(agentId) {
         uint256 seq = ++s_attestationCount[agentId];
+        // Audit Finding 6: block.timestamp reliance
+        // Justification: sequenceNumber enforces exact ordering. Timestamp is informational only.
         emit Attested(agentId, actionHash, actionType, seq, block.timestamp);
     }
 
+    // Audit Finding 3 & 4: Stale pending controller / No cancel to address(0)
+    // Justification: Overwriting allows intentional cancellation of a prior pending transfer.
+    // To cancel without transferring, the controller can transfer to their own address.
     function transferController(bytes32 agentId, address newController) external onlyController(agentId) {
         if (newController == address(0)) revert ZeroAddress();
         s_agents[agentId].pendingController = newController;
