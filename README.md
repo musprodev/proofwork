@@ -8,7 +8,6 @@ Log, sign, and verify commits, test results, and deployments onchain to maintain
 
 [![Solidity](https://img.shields.io/badge/solidity-0.8.28-black?style=for-the-badge&logo=solidity)](https://soliditylang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macOS-lightgrey?style=for-the-badge)](#)
 [![Network](https://img.shields.io/badge/network-Monad%20Testnet-purple?style=for-the-badge)](https://testnet.monadexplorer.com/)
 
 </div>
