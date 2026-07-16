@@ -1,137 +1,62 @@
-## Monad-flavored Foundry
+# ProofWork
 
-> [!NOTE]
-> In this Foundry template, the default chain is `monadTestnet`. If you wish to change it, change the network in `foundry.toml`
+A tamper-evident, timestamped attestation log for AI coding agent actions.
 
-<h4 align="center">
-  <a href="https://docs.monad.xyz">Monad Documentation</a> | <a href="https://book.getfoundry.sh/">Foundry Documentation</a> |
-   <a href="https://github.com/monad-developers/foundry-monad/issues">Report Issue</a>
-</h4>
+## Problem
 
+AI coding agents write code, run tests, and deploy contracts unattended. When a deployment fails or a bug appears, you need to know exactly what the agent did and when. Standard git commits do not guarantee the timeline, and terminal logs are easily lost. There is no reliable way to prove that a specific agent took a specific action at an exact time.
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+## Solution
 
-Foundry consists of:
+ProofWork logs agent actions onchain. Agents register their identity and submit hashes of their actions—like commits, test results, or deployments—to a smart contract. The contract stores the hash and a timestamp. 
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat, and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions, and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose Solidity REPL.
+Because the logs are onchain, they are permanent. If an agent claims it ran tests at 3 AM and the hash is on the contract, you know it happened.
 
-## Documentation
+## Architecture
 
-https://book.getfoundry.sh/
+ProofWork consists of three parts:
 
-## Usage
+1. **Smart contract (`src/ProofWork.sol`)**: A Solidity contract deployed on Monad Testnet. It handles agent registration and stores action hashes using events to save gas.
+2. **CLI (`cli/`)**: A Node.js command-line tool using `viem` to interact with the contract. Agents use this to register their IDs and log actions. It includes a git hook (`post-commit`) to automatically log commits.
+3. **Dashboard (`web/`)**: A Next.js web interface that reads events directly from the contract. It shows a timeline of all agent actions and lets you export the logs.
 
-### Build
+## Setup
 
-```shell
-forge build
+You need Node.js and Foundry installed.
+
+1. Install the dependencies for both the CLI and the web dashboard:
+   ```bash
+   npm install --prefix cli
+   npm install --prefix web
+   ```
+
+2. The CLI requires a keystore or a private key to sign transactions. You can use Foundry's keystore:
+   ```bash
+   # In a project using the CLI
+   proofwork register --agent-id my-agent-name
+   ```
+   The CLI prompts for your password interactively. It never reads private keys from environment variables.
+
+3. To run the dashboard locally:
+   ```bash
+   npm run dev --prefix web
+   ```
+   Open `http://localhost:3000` to see the live attestation timeline.
+
+## Contract
+
+ProofWork is live on Monad Testnet. 
+
+- **Address**: `0x41bdE1a2bbdF8859E82E163bb4b38E57f22C2ae0`
+- **Explorer**: [View on Monad Explorer](https://testnet.monadexplorer.com/address/0x41bdE1a2bbdF8859E82E163bb4b38E57f22C2ae0)
+
+## Demo
+
+Agents automatically log their commits using the provided git hook. To see the workflow in action, register an agent and commit a change:
+
+```bash
+proofwork register --agent-id my-build-agent
+git commit -m "fix: update dependency"
 ```
 
-### Test
-
-```shell
-forge test
-```
-
-### Format
-
-```shell
-forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-forge snapshot
-```
-
-### Anvil
-
-```shell
-anvil
-```
-
-### Deploy to Monad Testnet
-
-First, you need to create a keystore file. Do not forget to remember the password! You will need it to deploy your contract.
-
-```shell
-cast wallet import monad-deployer --private-key $(cast wallet new | grep 'Private key:' | awk '{print $3}')
-```
-
-After creating the keystore, you can read its address using:
-
-```shell
-cast wallet address --account monad-deployer
-```
-
-The command above will create a keystore file named `monad-deployer` in the `~/.foundry/keystores` directory.
-
-Then, you can deploy your contract to the Monad Testnet using the keystore file you created.
-
-```shell
-forge create src/Counter.sol:Counter --account monad-deployer --broadcast
-```
-
-### Verify Contract
-
-```shell
-forge verify-contract \
-  <contract_address> \
-  src/Counter.sol:Counter \
-  --chain 10143 \
-  --verifier sourcify \
-  --verifier-url https://sourcify-api-monad.blockvision.org
-```
-
-### Cast
-[Cast reference](https://book.getfoundry.sh/cast/)
-```shell
-cast <subcommand>
-```
-
-### Help
-
-```shell
-forge --help
-anvil --help
-cast --help
-```
-
-
-## FAQ
-
-### Error: `Error: server returned an error response: error code -32603: Signer had insufficient balance`
-
-This error happens when you don't have enough balance to deploy your contract. You can check your balance with the following command:
-
-```shell
-cast wallet address --account monad-deployer
-```
-
-### I have constructor arguments, how do I deploy my contract?
-
-```shell
-forge create \
-  src/Counter.sol:Counter \
-  --account monad-deployer \
-  --broadcast \
-  --constructor-args <constructor_arguments>
-```
-
-### I have constructor arguments, how do I verify my contract?
-
-```shell
-forge verify-contract \
-  <contract_address> \
-  src/Counter.sol:Counter \
-  --chain 10143 \
-  --verifier sourcify \
-  --verifier-url https://sourcify-api-monad.blockvision.org \
-  --constructor-args <abi_encoded_constructor_arguments>
-```
-
-Please refer to the [Foundry Book](https://book.getfoundry.sh/) for more information.
+The CLI logs the commit hash to the contract. The web dashboard updates immediately to show the new attestation in the timeline.
