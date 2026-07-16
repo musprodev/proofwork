@@ -1,0 +1,12 @@
+{
+  "name": "proofwork-cli",
+  "version": "0.1.0",
+  "description": "Tamper-evident attestation log for AI coding agent actions on Monad",
+  "type": "module",
+  "bin": {
+    "proofwork": "./index.js"
+  },
+  "dependencies": {
+    "viem": "^2.31.0"
+  }
+}

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# ProofWork post-commit hook
+# Logs every commit as a tamper-evident attestation on Monad.
+#
+# Install:
+#   git config core.hooksPath cli/hooks
+
+set -euo pipefail
+
+DIFF_HASH=$(git diff-tree --no-commit-id -r -p HEAD | git hash-object --stdin)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLI="$SCRIPT_DIR/../index.js"
+
+echo "[proofwork] logging commit $(git rev-parse --short HEAD)  diff-hash: $DIFF_HASH"
+
+node "$CLI" log \
+  --agent-id openswarm \
+  --action commit \
+  --data "$DIFF_HASH" \
+  --account proofwork-deployer

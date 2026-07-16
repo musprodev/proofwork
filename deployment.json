@@ -1,0 +1,17 @@
+{
+  "contract": "ProofWork",
+  "address": "0x41bdE1a2bbdF8859E82E163bb4b38E57f22C2ae0",
+  "chainId": 10143,
+  "network": "monad-testnet",
+  "deployer": "0x840530bd9DBC5538aC5205Ca14646BED2dBF20EB",
+  "transactionHash": "0xa663394d6a2de2dd28afca156f4c11f99a5993eba03d7b83e06866d02230ff91",
+  "rpcUrl": "https://testnet-rpc.monad.xyz",
+  "solcVersion": "0.8.28",
+  "evmVersion": "prague",
+  "verification": {
+    "verifier": "sourcify",
+    "verifierUrl": "https://sourcify-api-monad.blockvision.org",
+    "jobId": "c1d031cf-367f-452f-8188-fa5686b9bb29"
+  },
+  "deployedAt": "2026-07-16T06:45:55Z"
+}
