@@ -79,8 +79,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     async function fetchAgents() {
       try {
         const logs = await fetchLogsInChunks({
@@ -172,6 +174,10 @@ export default function Dashboard() {
   };
 
   const truncate = (str: string) => `${str.slice(0, 10)}...${str.slice(-8)}`;
+
+  if (!isMounted) {
+    return <div className="flex h-screen bg-[#0a0a0a]" />;
+  }
 
   return (
     <div className="flex h-screen bg-[#0a0a0a] text-zinc-300 font-sans overflow-hidden">
